@@ -1,5 +1,6 @@
 import json
 import math
+import os
 from pathlib import Path
 
 import numpy as np
@@ -11,6 +12,9 @@ import matplotlib.pyplot as plt
 
 class NoteChartGenerator:
     def __init__(self, audio_file: str, profile: str = None, song: str = None, config_root: str = "configs"):
+        if not os.path.isfile(audio_file):
+            raise FileNotFoundError(f"Audio file not found: {audio_file}")
+        
         self.audio_file = Path(audio_file)
         self.profile = profile
         self.song = song
