@@ -59,7 +59,7 @@ You can see the full generated output [here](output/demo_notes.json)
 
 ## Profiles / Songs
 
-The file [defaults.json](/configs//defaults.json) won't work for every track. So, make a copy, give it a name, you can use 1 profile and 1 song config in total. Each are merged into the default to make up your overall settings. Place your configs under `configs/profiles` or `configs/songs` accordingly as they are loaded from there.
+The file [defaults.json](notechart//configs//defaults.json) won't work for every track. So, make a copy and give it a name; you can use 1 profile config and 1 song config in total (or either or none, default settings will be used where no options are given). Each config is merged into the default to make up your overall settings. Place your configs under `notechart/configs/profiles` or `notechart/configs/songs`, or pass a custom config path with --config-dir (must use a `song` and a `profiles` folder)
 
 `min_freq` (Hz): Minimum frequency to consider as a valid pitch.
 

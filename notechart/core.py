@@ -1,7 +1,8 @@
 import json
 import math
-import os
+import shutil
 from pathlib import Path
+from platformdirs import user_config_dir
 
 import numpy as np
 import soundfile as sf
@@ -10,43 +11,100 @@ from aubio import source, pitch
 # For optional preview
 import matplotlib.pyplot as plt
 
-class NoteChartGenerator:
-    def __init__(self, audio_file: str, profile: str = None, song: str = None, config_root: str = "configs"):
-        if not os.path.isfile(audio_file):
-            raise FileNotFoundError(f"Audio file not found: {audio_file}")
-        
-        self.audio_file = Path(audio_file)
-        self.profile = profile
-        self.song = song
-        self.config_root = Path(config_root)
+PACKAGE_ROOT = Path(__file__).resolve().parent
+PACKAGED_CONFIG_ROOT = PACKAGE_ROOT / "configs"
 
-        self.cfg = None
+class NoteChartGenerator:
+    def __init__(
+        self,
+        audio_path: str | Path,
+        *,
+        config_dir: str | Path | None = None,
+        defaults_path: str | Path | None = None,
+        profile: str | None = None,
+        song: str | None = None,
+    ):
+        self.audio_path = Path(audio_path).expanduser().resolve()
+        if not self.audio_path.exists():
+            raise FileNotFoundError(f"Audio file not found: {self.audio_path}")
+
+        self.config_root = NoteChartGenerator.resolve_config_root(config_dir)
+
+        # Ensure defaults are there
+        NoteChartGenerator.bootstrap_configs(self.config_root, PACKAGED_CONFIG_ROOT)
+
+        self.defaults_path = (
+            Path(defaults_path).expanduser().resolve()
+            if defaults_path
+            else self.config_root / "defaults.json"
+        )
+
+        self.profile_path = (
+            self.config_root / "profiles" / f"{profile}.json"
+            if profile else None
+        )
+
+        self.song_path = (
+            self.config_root / "songs" / f"{song}.json"
+            if song else None
+        )
+
+        self.cfg =  NoteChartGenerator.load_config(
+            self.defaults_path,
+            self.profile_path,
+            self.song_path
+        )
+
         self.notes = []
         self.export_data = {}
 
     # ------------------------------
     # CONFIG LOADING
     # ------------------------------
-    def load_config(self):
-        PACKAGE_ROOT = Path(__file__).resolve().parent
-        config_root = PACKAGE_ROOT / "configs"
+    def bootstrap_configs(target_dir: Path, package_config_dir: Path):
+        """
+        Ensure the target config dir exists and contains defaults.
+        Copy from packaged configs if missing.
+        """
+        target_dir.mkdir(parents=True, exist_ok=True)
 
-        profile_path = config_root / "profiles" / f"{self.profile}.json" if self.profile else None
-        song_path = config_root / "songs" / f"{self.song}.json" if self.song else None
+        for item in package_config_dir.glob("**/*.json"):
+            # Relative path inside the package
+            rel_path = item.relative_to(package_config_dir)
+            dest = target_dir / rel_path
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            if not dest.exists():
+                shutil.copy2(item, dest)
 
-        defaults_path = config_root / "defaults.json"
+    def default_config_root(app_name="notechart"):
+        return Path(user_config_dir(app_name))
+
+    @staticmethod
+    def resolve_config_root(config_dir: Path | None = None) -> Path:
+        config_root = Path(config_dir).expanduser().resolve() if config_dir else NoteChartGenerator.default_config_root()
+
+        try:
+            config_root.mkdir(parents=True, exist_ok=True)
+        except PermissionError as e:
+            raise RuntimeError(
+                f"No permission to use config directory: {config_root}\n"
+                "Try a directory inside your home folder or run with elevated permissions."
+            ) from e
+
+        return config_root
+
+    def load_config(defaults_path: Path, profile: Path | None, song: Path | None):
         with open(defaults_path) as f:
             cfg = json.load(f)
 
-        if profile_path:
-            with open(profile_path) as f:
-                cfg = self._deep_merge(cfg, json.load(f))
+        if profile:
+            with open(profile) as f:
+                cfg = NoteChartGenerator._deep_merge(cfg, json.load(f))
 
-        if song_path:
-            with open(song_path) as f:
-                cfg = self._deep_merge(cfg, json.load(f))
-
-        self.cfg = cfg
+        if song:
+            with open(song) as f:
+                cfg = NoteChartGenerator._deep_merge(cfg, json.load(f))
+        return cfg
 
     @staticmethod
     def _deep_merge(base: dict, override: dict) -> dict:
@@ -317,11 +375,11 @@ class NoteChartGenerator:
         # --------------------------
         # Load audio
         # --------------------------
-        audio, sr = sf.read(str(self.audio_file))
+        audio, sr = sf.read(str(self.audio_path))
         if audio.ndim > 1:
             audio = audio.mean(axis=1)
 
-        src = source(str(self.audio_file), sr, HOP_SIZE)
+        src = source(str(self.audio_path), sr, HOP_SIZE)
         pitch_detector = pitch("yin", WINDOW_SIZE, HOP_SIZE, sr)
         pitch_detector.set_unit("Hz")
         pitch_detector.set_silence(-30)
@@ -377,22 +435,22 @@ class NoteChartGenerator:
                 "lane": int(lane)
             })
 
-        title = self.audio_file.stem
         self.export_data = {
-            "song": title,
+            "song": str(self.audio_path.stem),
             "length": total_samples / sr,
             "lanes": LANE_RANGE * 2 + 1,
-            "profile": self.profile,
-            "song_config": self.song,
+            "profile": str(self.profile_path),
+            "song_config": str(self.song_path),
             "notes": export_notes
         }
 
         self.notes = notes
         return self.export_data
 
-    def export(self, output_file: str):
+    def export(self, output_file: str | None = None):
         if not self.export_data:
             raise ValueError("No chart generated yet. Call generate_chart() first.")
+        output_file = output_file or (self.audio_path.parent / f"{self.audio_path.stem}_chart.json")
         with open(output_file, "w") as f:
             json.dump(self.export_data, f, indent=2)
         print(f"Exported chart to {output_file}")
