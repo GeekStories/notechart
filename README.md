@@ -21,7 +21,7 @@ Generate SingStar-style notecharts from audio for rhythm games.
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/yourusername/notechart.git
+git clone https://github.com/GeekStories/notechart.git
 cd notechart
 ```
 
@@ -51,7 +51,11 @@ generator.preview(chart)
 generator.export(chart, "output/chart.json")
 ```
 
-Example output: A timeline with note timestamps, durations, and pitch values ready for importing into your rhythm game.
+_Example output for Hurt by Johnny Cash_
+
+![Example output of the vocal track for Hurt by Johnny Cash](images/chart_example.png)
+
+You can see the full generated output [here](output/demo_notes.json)
 
 ## Profiles / Songs
 
