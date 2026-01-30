@@ -1,8 +1,0 @@
-{
-  "phrases": {
-    "phrase_pitch_tolerance": 2.2
-  },
-  "final": {
-    "final_merge_gap": 0.2
-  }
-}

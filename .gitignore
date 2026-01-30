@@ -14,8 +14,8 @@ __pycache__/
 Thumbs.db
 
 # Test files
-configs/profiles/*.json
-configs/songs/*.json
+notechart/configs/profiles/*.json
+notechart/configs/songs/*.json
 
 # Output files
 *_notes.json

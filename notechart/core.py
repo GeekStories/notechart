@@ -28,7 +28,9 @@ class NoteChartGenerator:
     # CONFIG LOADING
     # ------------------------------
     def load_config(self):
-        config_root = self.config_root
+        PACKAGE_ROOT = Path(__file__).resolve().parent
+        config_root = PACKAGE_ROOT / "configs"
+
         profile_path = config_root / "profiles" / f"{self.profile}.json" if self.profile else None
         song_path = config_root / "songs" / f"{self.song}.json" if self.song else None
 
