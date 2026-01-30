@@ -13,6 +13,10 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
+# Test files
+configs/profiles/*.json
+configs/songs/*.json
+
 # Output files
 *_notes.json
 *.wav
