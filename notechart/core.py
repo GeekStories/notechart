@@ -272,7 +272,7 @@ class NoteChartGenerator:
     def preview(export_data):
         notes = export_data["notes"]
         lanes = export_data["lanes"]
-        song = export_data["song"]
+        name = export_data["name"]
 
         min_lane = -(lanes // 2)
         max_lane = lanes // 2
@@ -293,7 +293,7 @@ class NoteChartGenerator:
                 ax.broken_barh([(n["start"], n["duration"])], (n["lane"] - 0.4, 0.8))
             ax.set_xlim(current_start, current_start + current_window)
             ax.set_ylim(min_lane - 1, max_lane + 1)
-            ax.set_title(f"{song}  |  Window: {current_window:.1f}s")
+            ax.set_title(f"{name}  |  Window: {current_window:.1f}s")
             ax.set_xlabel("Time (seconds)")
             ax.set_ylabel("Lane")
             ax.set_yticks(range(min_lane, max_lane + 1))
@@ -436,12 +436,14 @@ class NoteChartGenerator:
             })
 
         self.export_data = {
-            "song": str(self.audio_path.stem),
+            "name": str(self.audio_path.stem),
             "length": total_samples / sr,
             "lanes": LANE_RANGE * 2 + 1,
-            "profile": str(self.profile_path),
-            "song_config": str(self.song_path),
-            "notes": export_notes
+            "configs": {
+                "profile": str(self.profile_path) if self.profile_path else None,
+                "song": str(self.song_path) if self.song_path else None
+            },
+            "notes": export_notes,
         }
 
         self.notes = notes
