@@ -445,8 +445,7 @@ class NoteChartGenerator:
                 "song": str(self.song_path) if self.song_path else None
             },
             "notes": export_notes,
-            "pitches": [{"time": float(t), "pitch": float(p)} 
-                        for t, p in zip(times, raw_pitches) if p > 0]
+            "pitches": [{"time": float(t), "pitch": float(p)} for t, p in zip(times, raw_pitches)],
         }
 
         self.notes = notes
