@@ -400,6 +400,7 @@ class NoteChartGenerator:
         # --------------------------
         # Pitch processing pipeline
         # --------------------------
+        raw_pitches = pitches.copy()
         pitches = self.clamp_octaves(pitches)
         pitches = self.smooth_time_series(pitches, SMOOTH_FRAMES)
         midi = [self.hz_to_midi(p) for p in pitches]
@@ -444,6 +445,8 @@ class NoteChartGenerator:
                 "song": str(self.song_path) if self.song_path else None
             },
             "notes": export_notes,
+            "pitches": [{"time": float(t), "pitch": float(p)} 
+                        for t, p in zip(times, raw_pitches) if p > 0]
         }
 
         self.notes = notes
