@@ -277,7 +277,7 @@ class NoteChartGenerator:
             "length": total_samples / sr,
             "lanes": LANE_RANGE * 2 + 1,
             "notes": export_notes,
-            "pitches": [{"time": float(t), "pitch": float(p)} for t, p in zip(times, raw_pitches)],
+            "pitches": [{"time": float(t), "pitch": float(p), "midi": float(self.hz_to_midi(p))} for t, p in zip(times, raw_pitches) if p > 0],
         }
 
         self.notes = notes
