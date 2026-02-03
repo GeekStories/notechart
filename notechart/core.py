@@ -1,15 +1,9 @@
 import json
 import math
-import shutil
-from pathlib import Path
-from platformdirs import user_config_dir
-
 import numpy as np
 import soundfile as sf
+from pathlib import Path
 from aubio import source, pitch
-
-# For optional preview
-import matplotlib.pyplot as plt
 
 PACKAGE_ROOT = Path(__file__).resolve().parent
 PACKAGED_CONFIG_ROOT = PACKAGE_ROOT / "configs"
@@ -19,103 +13,16 @@ class NoteChartGenerator:
         self,
         audio_path: str | Path,
         *,
-        config_dir: str | Path | None = None,
-        defaults_path: str | Path | None = None,
-        profile: str | None = None,
-        song: str | None = None,
+        cfg: dict,
     ):
         self.audio_path = Path(audio_path).expanduser().resolve()
         if not self.audio_path.exists():
             raise FileNotFoundError(f"Audio file not found: {self.audio_path}")
 
-        self.config_root = NoteChartGenerator.resolve_config_root(config_dir)
-
-        # Ensure defaults are there
-        NoteChartGenerator.bootstrap_configs(self.config_root, PACKAGED_CONFIG_ROOT)
-
-        self.defaults_path = (
-            Path(defaults_path).expanduser().resolve()
-            if defaults_path
-            else self.config_root / "defaults.json"
-        )
-
-        self.profile_path = (
-            self.config_root / "profiles" / f"{profile}.json"
-            if profile else None
-        )
-
-        self.song_path = (
-            self.config_root / "songs" / f"{song}.json"
-            if song else None
-        )
-
-        self.cfg =  NoteChartGenerator.load_config(
-            self.defaults_path,
-            self.profile_path,
-            self.song_path
-        )
-
+        self.cfg = cfg
         self.notes = []
         self.export_data = {}
-
-    # ------------------------------
-    # CONFIG LOADING
-    # ------------------------------
-    def bootstrap_configs(target_dir: Path, package_config_dir: Path):
-        """
-        Ensure the target config dir exists and contains defaults.
-        Copy from packaged configs if missing.
-        """
-        target_dir.mkdir(parents=True, exist_ok=True)
-
-        for item in package_config_dir.glob("**/*.json"):
-            # Relative path inside the package
-            rel_path = item.relative_to(package_config_dir)
-            dest = target_dir / rel_path
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            if not dest.exists():
-                shutil.copy2(item, dest)
-
-    def default_config_root(app_name="notechart"):
-        return Path(user_config_dir(app_name))
-
-    @staticmethod
-    def resolve_config_root(config_dir: Path | None = None) -> Path:
-        config_root = Path(config_dir).expanduser().resolve() if config_dir else NoteChartGenerator.default_config_root()
-
-        try:
-            config_root.mkdir(parents=True, exist_ok=True)
-        except PermissionError as e:
-            raise RuntimeError(
-                f"No permission to use config directory: {config_root}\n"
-                "Try a directory inside your home folder or run with elevated permissions."
-            ) from e
-
-        return config_root
-
-    def load_config(defaults_path: Path, profile: Path | None, song: Path | None):
-        with open(defaults_path) as f:
-            cfg = json.load(f)
-
-        if profile:
-            with open(profile) as f:
-                cfg = NoteChartGenerator._deep_merge(cfg, json.load(f))
-
-        if song:
-            with open(song) as f:
-                cfg = NoteChartGenerator._deep_merge(cfg, json.load(f))
-        return cfg
-
-    @staticmethod
-    def _deep_merge(base: dict, override: dict) -> dict:
-        result = dict(base)
-        for k, v in override.items():
-            if isinstance(v, dict) and k in result:
-                result[k] = NoteChartGenerator._deep_merge(result[k], v)
-            else:
-                result[k] = v
-        return result
-
+    
     # ------------------------------
     # UTILITY FUNCTIONS
     # ------------------------------
@@ -266,77 +173,6 @@ class NoteChartGenerator:
         return result
 
     # ------------------------------
-    # PREVIEW
-    # ------------------------------
-    @staticmethod
-    def preview(export_data):
-        notes = export_data["notes"]
-        lanes = export_data["lanes"]
-        name = export_data["name"]
-
-        min_lane = -(lanes // 2)
-        max_lane = lanes // 2
-        WINDOW_SECONDS = 8.0
-        ZOOM_FACTOR = 0.8
-        SCROLL_STEP = 0.25
-
-        song_length = max(n["start"] + n["duration"] for n in notes)
-        current_start = 0.0
-        current_window = WINDOW_SECONDS
-
-        fig, ax = plt.subplots(figsize=(14, 5))
-        plt.subplots_adjust(bottom=0.15)
-
-        def draw():
-            ax.clear()
-            for n in notes:
-                ax.broken_barh([(n["start"], n["duration"])], (n["lane"] - 0.4, 0.8))
-            ax.set_xlim(current_start, current_start + current_window)
-            ax.set_ylim(min_lane - 1, max_lane + 1)
-            ax.set_title(f"{name}  |  Window: {current_window:.1f}s")
-            ax.set_xlabel("Time (seconds)")
-            ax.set_ylabel("Lane")
-            ax.set_yticks(range(min_lane, max_lane + 1))
-            ax.grid(True, axis="x", alpha=0.3)
-            fig.canvas.draw_idle()
-
-        def on_scroll(event):
-            nonlocal current_start
-            delta = current_window * SCROLL_STEP
-            if event.button == "up":
-                current_start = max(0, current_start - delta)
-            elif event.button == "down":
-                current_start = min(song_length - current_window, current_start + delta)
-            draw()
-
-        def on_key(event):
-            nonlocal current_start, current_window
-            if event.key in ("+", "="):
-                current_window *= ZOOM_FACTOR
-            elif event.key in ("-", "_"):
-                current_window /= ZOOM_FACTOR
-            elif event.key == "left":
-                current_start = max(0, current_start - current_window * 0.25)
-            elif event.key == "right":
-                current_start = min(song_length - current_window, current_start + current_window * 0.25)
-            elif event.key == "home":
-                current_start = 0.0
-            elif event.key == "end":
-                current_start = max(0, song_length - current_window)
-            current_window = max(1.0, current_window)
-            draw()
-
-        fig.canvas.mpl_connect("scroll_event", on_scroll)
-        fig.canvas.mpl_connect("key_press_event", on_key)
-
-        # Assign lanes for drawing
-        for n in notes:
-            if "lane" not in n:
-                n["lane"] = 0
-        draw()
-        plt.show()
-
-    # ------------------------------
     # GENERATE & EXPORT
     # ------------------------------
     def generate_chart(self):
@@ -440,10 +276,6 @@ class NoteChartGenerator:
             "name": str(self.audio_path.stem),
             "length": total_samples / sr,
             "lanes": LANE_RANGE * 2 + 1,
-            "configs": {
-                "profile": str(self.profile_path) if self.profile_path else None,
-                "song": str(self.song_path) if self.song_path else None
-            },
             "notes": export_notes,
             "pitches": [{"time": float(t), "pitch": float(p)} for t, p in zip(times, raw_pitches)],
         }
