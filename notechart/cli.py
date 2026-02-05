@@ -25,7 +25,7 @@ def build_arg_parser():
         # ------------------
         p.add_argument("--min-note-duration", type=float, default=0.1)
         p.add_argument("--merge-gap", type=float, default=0.15)
-        p.add_argument("--merge-pitch-tolerance", type=float, default=0.5)
+        p.add_argument("--note-pitch-tolerance", type=float, default=0.5)
 
         # ------------------
         # Phrases
@@ -49,33 +49,21 @@ def build_arg_parser():
 
 def build_cfg_from_args(args) -> dict:
         return {
-            "analysis": {
-                "window_size": args.window_size,
-                "hop_size": args.hop_size,
-                "min_freq": args.min_freq,
-                "max_freq": args.max_freq,
-            },
-            "stability": {
-                "smooth_frames": args.smooth_frames,
-                "stability_frames": args.stability_frames,
-                "hold_tolerance": args.hold_tolerance,
-            },
-            "notes": {
-                "min_note_duration": args.min_note_duration,
-                "merge_gap": args.merge_gap,
-                "merge_pitch_tolerance": args.merge_pitch_tolerance,
-            },
-            "phrases": {
-                "phrase_gap": args.phrase_gap,
-                "phrase_pitch_tolerance": args.phrase_pitch_tolerance,
-                "stretch_factor": args.stretch_factor,
-            },
-            "final": {
-                "final_merge_gap": args.final_merge_gap,
-            },
-            "lanes": {
-                "lane_range": args.lane_range,
-            },
+            "window_size": args.window_size,
+            "hop_size": args.hop_size,
+            "min_freq": args.min_freq,
+            "max_freq": args.max_freq,
+            "smooth_frames": args.smooth_frames,
+            "stability_frames": args.stability_frames,
+            "hold_tolerance": args.hold_tolerance,
+            "min_note_duration": args.min_note_duration,
+            "merge_gap": args.merge_gap,
+            "note_pitch_tolerance": args.note_pitch_tolerance,
+            "phrase_gap": args.phrase_gap,
+            "phrase_pitch_tolerance": args.phrase_pitch_tolerance,
+            "stretch_factor": args.stretch_factor,
+            "final_merge_gap": args.final_merge_gap,
+            "lane_range": args.lane_range,
         }
 
 

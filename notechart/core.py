@@ -182,31 +182,31 @@ class NoteChartGenerator:
         cfg = self.cfg
 
         # Analysis parameters
-        WINDOW_SIZE = cfg["analysis"]["window_size"]
-        HOP_SIZE = cfg["analysis"]["hop_size"]
-        MIN_FREQ = cfg["analysis"]["min_freq"]
-        MAX_FREQ = cfg["analysis"]["max_freq"]
+        WINDOW_SIZE = cfg["window_size"]
+        HOP_SIZE = cfg["hop_size"]
+        MIN_FREQ = cfg["min_freq"]
+        MAX_FREQ = cfg["max_freq"]
 
         # Pitch stability
-        SMOOTH_FRAMES = cfg["stability"]["smooth_frames"]
-        STABILITY_FRAMES = cfg["stability"]["stability_frames"]
-        HOLD_TOLERANCE = cfg["stability"]["hold_tolerance"]
+        SMOOTH_FRAMES = cfg["smooth_frames"]
+        STABILITY_FRAMES = cfg["stability_frames"]
+        HOLD_TOLERANCE = cfg["hold_tolerance"]
 
         # Notes
-        MIN_NOTE_DURATION = cfg["notes"]["min_note_duration"]
-        MERGE_GAP = cfg["notes"]["merge_gap"]
-        MERGE_PITCH_TOLERANCE = cfg["notes"]["merge_pitch_tolerance"]
+        MIN_NOTE_DURATION = cfg["min_note_duration"]
+        MERGE_GAP = cfg["merge_gap"]
+        MERGE_PITCH_TOLERANCE = cfg["note_pitch_tolerance"]
 
         # Phrase
-        PHRASE_GAP = cfg["phrases"]["phrase_gap"]
-        PHRASE_PITCH_TOLERANCE = cfg["phrases"]["phrase_pitch_tolerance"]
-        STRETCH_FACTOR = cfg["phrases"]["stretch_factor"]
+        PHRASE_GAP = cfg["phrase_gap"]
+        PHRASE_PITCH_TOLERANCE = cfg["phrase_pitch_tolerance"]
+        STRETCH_FACTOR = cfg["stretch_factor"]
 
         # Final mash
-        FINAL_MERGE_GAP = cfg["final"]["final_merge_gap"]
+        FINAL_MERGE_GAP = cfg["final_merge_gap"]
 
         # Lane export
-        LANE_RANGE = cfg["lanes"]["lane_range"]
+        LANE_RANGE = cfg["lane_range"]
 
         # --------------------------
         # Load audio
