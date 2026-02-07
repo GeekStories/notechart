@@ -70,6 +70,7 @@ def build_cfg_from_args(args) -> dict:
 def main():
     parser = build_arg_parser()
     parser.add_argument("audio", help="Path to audio file")
+    parser.add_argument("lyrics", help="Path to lyrics file")
     parser.add_argument("-o", "--output", help="Output chart path")
     args = parser.parse_args()
 
@@ -77,6 +78,7 @@ def main():
 
     gen = NoteChartGenerator(
         audio_path=args.audio,
+        lyrics_path=args.lyrics,
         cfg=cfg
     )
 

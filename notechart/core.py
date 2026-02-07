@@ -1,20 +1,29 @@
 import json
 import math
+import re
+import requests
 import numpy as np
 import soundfile as sf
 from pathlib import Path
 from aubio import source, pitch
 
+LRC_LINE = re.compile(r"\[(\d+):(\d+\.\d+)\](.*)")
+
 class NoteChartGenerator:
     def __init__(
         self,
         audio_path: str | Path,
+        lyrics_path: str | Path,
         *,
         cfg: dict,
     ):
         self.audio_path = Path(audio_path).expanduser().resolve()
         if not self.audio_path.exists():
             raise FileNotFoundError(f"Audio file not found: {self.audio_path}")
+        
+        self.lyrics_path = Path(lyrics_path).expanduser().resolve()
+        if not self.lyrics_path.exists():
+            raise FileNotFoundError(f"Lyrics file not found: {self.lyrics_path}")
 
         self.cfg = cfg
         self.notes = []
@@ -169,6 +178,24 @@ class NoteChartGenerator:
             })
         return result
 
+    @staticmethod
+    def parse_lrc(lines):
+        entries = []
+
+        for line in lines:
+            match = LRC_LINE.match(line)
+            if not match:
+                continue
+
+            minutes = int(match.group(1))
+            seconds = float(match.group(2))
+            timestamp = minutes * 60 + seconds
+            text = match.group(3).strip()
+
+            entries.append((timestamp, text))
+
+        return entries
+    
     # ------------------------------
     # GENERATE & EXPORT
     # ------------------------------
@@ -202,9 +229,6 @@ class NoteChartGenerator:
         # Final mash
         FINAL_MERGE_GAP = cfg["final_merge_gap"]
 
-        # Lane export
-        MAX_LANES = cfg["lane_range"]
-
         # --------------------------
         # Load audio
         # --------------------------
@@ -229,6 +253,25 @@ class NoteChartGenerator:
             total_samples += read
             if read < HOP_SIZE:
                 break
+
+        # --------------------------
+        # Load lyrics
+        # --------------------------
+        with open(self.lyrics_path, "r") as f:
+            entries = self.parse_lrc(f.read().strip().splitlines())
+
+        lyrics = []
+        with open(self.lyrics_path, "r") as f:
+            self.lyrics = f.read().strip().splitlines()
+
+            for i, (start, text) in enumerate(entries):
+                end = entries[i + 1][0] if i + 1 < len(entries) else audio.shape[0] / sr
+                lyrics.append({"start": start, "end": end, "text": text})
+
+        # Round each lyric start/end to 2 decimals
+        for l in lyrics:
+            l["start"] = round(l["start"], 2)
+            l["end"] = round(l["end"], 2)
 
         # --------------------------
         # Pitch processing pipeline
@@ -257,13 +300,15 @@ class NoteChartGenerator:
 
         notes = self.mash_merge(notes, FINAL_MERGE_GAP)
 
+        # --------------------------
         # Lane normalization & export
+        # --------------------------
         reference_pitch = np.median([n["pitch"] for n in notes])
         export_notes = []
         for n in notes:
             semitone_offset = round(12 * math.log2(n["pitch"] / reference_pitch))
-            lane = semitone_offset + MAX_LANES // 2
-            lane = max(0, min(MAX_LANES - 1, lane))
+            lane = semitone_offset + self.cfg["lane_range"] // 2
+            lane = max(0, min(self.cfg["lane_range"] - 1, lane))
             export_notes.append({
                 "start": round(n["start"], 3),
                 "duration": round(n["end"] - n["start"], 3),
@@ -273,9 +318,11 @@ class NoteChartGenerator:
         self.export_data = {
             "name": str(self.audio_path.stem),
             "length": total_samples / sr,
-            "lanes": MAX_LANES,
+            "lanes": self.cfg["lane_range"],
             "notes": export_notes,
-            "pitches": [{"time": float(t), "pitch": float(p), "midi": float(self.hz_to_midi(p))} for t, p in zip(times, raw_pitches) if p > 0],
+            "pitches": [{"time": float(t), "pitch": float(p), "midi": float(self.hz_to_midi(p))}
+                        for t, p in zip(times, raw_pitches) if p > 0],
+            "lyrics": lyrics
         }
 
         self.notes = notes
