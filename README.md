@@ -2,141 +2,182 @@
 
 Generate SingStar-style notecharts from audio for rhythm games.
 
-**Notechart** is an open-source project for extracting rhythm/game note timelines from vocal stems. It allows you to generate note charts, preview them, and export for use in rhythm games or other interactive applications.
+Notechart is an open-source tool that analyzes audio files, extracts pitch over time, and converts it into playable rhythm-game notecharts. It’s designed for vocal-driven games (SingStar-like), but can be adapted for other melodic content.
 
 ---
 
-## Features
+# Features
 
-- Extract vocal/instrumental notes from audio
-- Generate SingStar-style notecharts
-- Export note data for Unity or other game engines
-- Preview note timelines in Python before export
-- Lightweight and easy-to-integrate
+- Pitch detection using aubio (YIN)
+- Stable note extraction with smoothing, hysteresis, and gap filling
+- Phrase-based note merging
+- Lane-based pitch normalization for rhythm games
+- JSON export suitable for game engines (Unity, custom engines, etc.)
+- Simple CLI with explicit, reproducible settings
 
 ---
 
-## Installation
+# Installation
 
-1. Clone the repository:
+Requirements
 
-```bash
+- Python 3.10+
+- aubio (GPLv3)
+- numpy
+- soundfile
+
+---
+
+# Install
+
+```
 git clone https://github.com/GeekStories/notechart.git
 cd notechart
-```
-
-2. Install dependencies (example using pip):
-
-```bash
 pip install -r requirements.txt
 ```
 
-Note: This project uses [aubio](https://aubio.org/) under GPLv3.
+---
 
-## Usage
+# Usage
 
-```python
-from notechart import NoteChartGenerator
+Once installed, you can use notechart in the terminal:
 
-# Initialize generator
-generator = NoteChartGenerator("path/to/audio/file.wav")
+Example: `notechart input.wav -o output_chart.json`
 
-# Generate note chart
-chart = generator.generate_chart()
+# Config Options
 
-# Preview in Python (optional)
-generator.preview(chart)
+### Analysis
 
-# Export to Unity-friendly format
-generator.export(chart, "output/chart.json")
+- --window-size
+  - FFT window size for pitch detection (default: 2048)
+- --hop-size
+  - Hop size between frames (default: 512)
+- --min-freq Minimum
+  - frequency in Hz (default: 50.0)
+- --max-freq
+  - Maximum frequency in Hz (default: 2000.0)
+
+### Pitch Stability
+
+- --smooth-frames
+  - Moving average window for pitch smoothing (default: 3)
+- --stability-frames
+  - Frames required for pitch stability (default: 4)
+- --hold-tolerance
+  - Max pitch change in MIDI to hold a note (default: 0.5)
+
+### Notes
+
+- --min-note-duration
+  - Minimum note duration in seconds (default: 0.1)
+- --merge-gap
+  - Time gap allowed when merging notes (default: 0.15)
+- --note-pitch-tolerance
+  - Pitch difference allowed when merging notes (default: 0.5)
+
+### Phrases
+
+- --phrase-gap
+  - Max silence between notes in a phrase (default: 0.4)
+- --phrase-pitch-tolerance
+  - Pitch range allowed within a phrase (default: 1.0)
+- --stretch-factor
+  - Stretch factor applied to phrases (default: 1.0)
+
+### Final Pass
+
+- --final-merge-gap
+  - Final gap threshold for merging (default: 0.2)
+
+### Lane Mapping
+
+- --lane-range
+  - Number of lanes for notes (default: 9)
+
+---
+
+# Usage
+
+```Python
+from notechart.core import NoteChartGenerator
+
+cfg = {
+    "window_size": 2048,
+    "hop_size": 512,
+    "min_freq": 70.0,
+    "max_freq": 800.0,
+    "smooth_frames": 5,
+    "stability_frames": 6,
+    "hold_tolerance": 0.5,
+    "min_note_duration": 0.1,
+    "merge_gap": 0.15,
+    "note_pitch_tolerance": 0.5,
+    "phrase_gap": 0.4,
+    "phrase_pitch_tolerance": 1.0,
+    "stretch_factor": 1.0,
+    "final_merge_gap": 0.2,
+    "lane_range": 9
+}
+
+gen = NoteChartGenerator("audio.wav", cfg=cfg)
+chart = gen.generate_chart()
+gen.export("chart.json")
 ```
 
-_Example output for Hurt by Johnny Cash_
+---
 
-![Example output of the vocal track for Hurt by Johnny Cash](images/chart_example.png)
+# Export Format
 
-You can see the full generated output [here](output/demo_notes.json)
+```json
+{
+  "name": "Audio File stem",
+  "length": "Track length in seconds",
+  "lanes": "Max lanes to render",
+  "notes": "List of playable notes",
+  "pitches": "List of raw pitch data"
+}
+```
 
-## Profiles / Songs
+Each `note` entry contains:
 
-The file [defaults.json](notechart//configs//defaults.json) won't work for every track. So, make a copy and give it a name; you can use 1 profile config and 1 song config in total (or either or none, default settings will be used where no options are given). Each config is merged into the default to make up your overall settings. Place your configs under `notechart/configs/profiles` or `notechart/configs/songs`, or pass a custom config path with --config-dir (must use a `song` and a `profiles` folder)
+- **start**: Start time in seconds
+- **duration**: Duration in seconds
+- **lane**: Lane index
 
-`min_freq` (Hz): Minimum frequency to consider as a valid pitch.
+Each `pitch` entry contains:
 
-- Example: 70 Hz ignores very low rumble or noise.
-- Useful to filter out bass/floor noise or male/female voice range extremes.
+- **time**: Time in seconds
+- **pitch**: Frequency in Hz
+- **midi**: MIDI pitch value
 
-`max_freq` (Hz): Maximum frequency to consider.
+---
 
-- Example: 300 Hz limits to vocal range; higher frequencies are ignored.
+# How It Works
 
-`window_size` (samples): Size of the analysis window for pitch detection (aubio’s yin algorithm).
+1. Pitch extraction using aubio (YIN)
+2. Octave correction and smoothing
+3. MIDI quantization to half-semitones
+4. Stability enforcement and pitch holding
+5. Micro-gap filling
+6. Note segmentation
+7. Phrase merging and stretching
+8. Lane normalization relative to median pitch
 
-- Larger windows → more stable pitch detection but less time resolution.
-- Smaller windows → faster response but noisier pitch results.
+---
 
-`hop_size` (samples): Step size between analysis frames.
+# Contributing
 
-- Smaller hop → more frequent pitch updates, smoother but more CPU-heavy.
-- Larger hop → less precise timing, but faster processing.
+Contributions are welcome.
 
-`smooth_frames`: Number of frames for moving average smoothing.
-
-- Reduces small pitch jitters (“micro wobble”) in the raw pitch data.
-- Example: 5 frames → averages 5 consecutive frames, ignoring zeros.
-
-`stability_frames`: Number of consecutive frames a pitch must remain the same to be considered “stable.”
-
-- Prevents rapid switching between similar notes.
-- Example: 6 frames → the pitch must be steady for ~6 hop intervals.
-
-`hold_tolerance`: Maximum allowed change in pitch to “hold” the previous note.
-
-- Helps prevent breaking a single sung note into multiple notes due to tiny pitch fluctuations.
-- Example: 0.75 (in MIDI units) → pitches within ±0.75 are treated as the same note.
-
-`min_note_duration` (seconds): Ignore very short notes below this duration.
-
-- Filters out micro-spikes and noise in pitch detection.
-- Example: 0.12s → notes shorter than 120 ms are discarded.
-
-`merge_gap` (seconds): Maximum time gap between consecutive notes to merge them.
-
-- Small pauses are ignored, treating them as one continuous note.
-
-`merge_pitch_tolerance` (MIDI units): Maximum pitch difference for merging consecutive notes.
-
-- Prevents merging notes that are significantly different.
-- Example: 0.5 → two notes less than half a semitone apart are merged.
-
-`phrase_gap` (seconds): Maximum allowed silence between notes for them to be part of the same phrase.
-
-- Example: 0.45 → notes separated by ≤450 ms are grouped into the same phrase.
-
-`phrase_pitch_tolerance` (MIDI units): Maximum pitch difference within a phrase.
-
-- Example: 1.75 → notes within ~2 semitones are considered part of the same phrase.
-
-`stretch_factor`: Stretch or compress the duration of notes in a phrase.
-
-- Example: 1.25 → increases note duration by 25%, often to match rhythm game timing.
-
-`final_merge_gap` (seconds): Gap threshold for the last pass of merging notes.
-
-- Ensures very short gaps at the end of sequences are combined to prevent fragmented note charts.
-
-`lane_range`: Number of lanes above and below a reference pitch for the notechart.
-
-- Total lanes = lane_range \* 2 + 1.
-- Example: 4 → total 9 lanes, with middle lane as reference pitch.
-- Determines how finely pitches are mapped to lanes in-game.
-
-## Contributing
-
-Contributions are welcome!
-
-- Fork the repo
-- Make changes in a feature branch
+- Fork the repository
+- Create a feature branch
 - Submit a pull request
 
-Please follow [PEP8](https://www.python.org/dev/peps/pep-0008/) for code style.
+Please follow PEP8 for code style.
+
+---
+
+# License
+
+This project is open-source and depends on aubio (GPLv3).
+Any redistribution must comply with GPLv3 requirements.

@@ -42,7 +42,7 @@ def build_arg_parser():
         # ------------------
         # Lanes
         # ------------------
-        p.add_argument("--lane-range", type=int, default=4)
+        p.add_argument("--lane-range", type=int, default=9)
 
         return p
 

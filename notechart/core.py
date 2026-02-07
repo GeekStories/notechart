@@ -5,9 +5,6 @@ import soundfile as sf
 from pathlib import Path
 from aubio import source, pitch
 
-PACKAGE_ROOT = Path(__file__).resolve().parent
-PACKAGED_CONFIG_ROOT = PACKAGE_ROOT / "configs"
-
 class NoteChartGenerator:
     def __init__(
         self,
@@ -206,7 +203,7 @@ class NoteChartGenerator:
         FINAL_MERGE_GAP = cfg["final_merge_gap"]
 
         # Lane export
-        LANE_RANGE = cfg["lane_range"]
+        MAX_LANES = cfg["lane_range"]
 
         # --------------------------
         # Load audio
@@ -265,7 +262,8 @@ class NoteChartGenerator:
         export_notes = []
         for n in notes:
             lane = round(n["pitch"] - reference_pitch)
-            lane = max(-LANE_RANGE, min(LANE_RANGE, lane))
+            lane = lane + MAX_LANES // 2
+            lane = max(0, min(MAX_LANES, lane))
             export_notes.append({
                 "start": round(n["start"], 3),
                 "duration": round(n["end"] - n["start"], 3),
@@ -275,7 +273,7 @@ class NoteChartGenerator:
         self.export_data = {
             "name": str(self.audio_path.stem),
             "length": total_samples / sr,
-            "lanes": LANE_RANGE * 2 + 1,
+            "lanes": MAX_LANES,
             "notes": export_notes,
             "pitches": [{"time": float(t), "pitch": float(p), "midi": float(self.hz_to_midi(p))} for t, p in zip(times, raw_pitches) if p > 0],
         }
