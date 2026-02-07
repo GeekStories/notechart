@@ -261,9 +261,9 @@ class NoteChartGenerator:
         reference_pitch = np.median([n["pitch"] for n in notes])
         export_notes = []
         for n in notes:
-            lane = round(n["pitch"] - reference_pitch)
-            lane = lane + MAX_LANES // 2
-            lane = max(0, min(MAX_LANES, lane))
+            semitone_offset = round(12 * math.log2(n["pitch"] / reference_pitch))
+            lane = semitone_offset + MAX_LANES // 2
+            lane = max(0, min(MAX_LANES - 1, lane))
             export_notes.append({
                 "start": round(n["start"], 3),
                 "duration": round(n["end"] - n["start"], 3),
