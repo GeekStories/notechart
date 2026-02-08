@@ -1,7 +1,6 @@
 import json
 import math
 import re
-import requests
 import numpy as np
 import soundfile as sf
 from pathlib import Path
@@ -13,17 +12,12 @@ class NoteChartGenerator:
     def __init__(
         self,
         audio_path: str | Path,
-        lyrics_path: str | Path,
         *,
         cfg: dict,
     ):
         self.audio_path = Path(audio_path).expanduser().resolve()
         if not self.audio_path.exists():
             raise FileNotFoundError(f"Audio file not found: {self.audio_path}")
-        
-        self.lyrics_path = Path(lyrics_path).expanduser().resolve()
-        if not self.lyrics_path.exists():
-            raise FileNotFoundError(f"Lyrics file not found: {self.lyrics_path}")
 
         self.cfg = cfg
         self.notes = []
@@ -177,24 +171,6 @@ class NoteChartGenerator:
                 "pitch": sum(b["pitch"] for b in buffer) / len(buffer)
             })
         return result
-
-    @staticmethod
-    def parse_lrc(lines):
-        entries = []
-
-        for line in lines:
-            match = LRC_LINE.match(line)
-            if not match:
-                continue
-
-            minutes = int(match.group(1))
-            seconds = float(match.group(2))
-            timestamp = minutes * 60 + seconds
-            text = match.group(3).strip()
-
-            entries.append((timestamp, text))
-
-        return entries
     
     # ------------------------------
     # GENERATE & EXPORT
@@ -255,25 +231,6 @@ class NoteChartGenerator:
                 break
 
         # --------------------------
-        # Load lyrics
-        # --------------------------
-        with open(self.lyrics_path, "r") as f:
-            entries = self.parse_lrc(f.read().strip().splitlines())
-
-        lyrics = []
-        with open(self.lyrics_path, "r") as f:
-            self.lyrics = f.read().strip().splitlines()
-
-            for i, (start, text) in enumerate(entries):
-                end = entries[i + 1][0] if i + 1 < len(entries) else audio.shape[0] / sr
-                lyrics.append({"start": start, "end": end, "text": text})
-
-        # Round each lyric start/end to 2 decimals
-        for l in lyrics:
-            l["start"] = round(l["start"], 2)
-            l["end"] = round(l["end"], 2)
-
-        # --------------------------
         # Pitch processing pipeline
         # --------------------------
         raw_pitches = pitches.copy()
@@ -322,7 +279,7 @@ class NoteChartGenerator:
             "notes": export_notes,
             "pitches": [{"time": float(t), "pitch": float(p), "midi": float(self.hz_to_midi(p))}
                         for t, p in zip(times, raw_pitches) if p > 0],
-            "lyrics": lyrics
+            "lyrics": [] 
         }
 
         self.notes = notes
