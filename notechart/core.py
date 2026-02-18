@@ -261,20 +261,31 @@ class NoteChartGenerator:
         # Lane normalization & export
         # --------------------------
         reference_pitch = np.median([n["pitch"] for n in notes])
+        mid_lane = self.cfg["lane_range"] // 2
+
         export_notes = []
+
         for n in notes:
             semitone_offset = round(12 * math.log2(n["pitch"] / reference_pitch))
-            lane = semitone_offset + self.cfg["lane_range"] // 2
+
+            # 0 offset is true center
+            lane = mid_lane + semitone_offset
+
+            # clamp to available lanes
             lane = max(0, min(self.cfg["lane_range"] - 1, lane))
+
             export_notes.append({
                 "start": round(n["start"], 3),
                 "duration": round(n["end"] - n["start"], 3),
-                "lane": int(lane)
+                "lane": int(lane),
+                "offset": int(semitone_offset)  # optional but useful
             })
 
         self.export_data = {
             "name": str(self.audio_path.stem),
             "length": total_samples / sr,
+            "reference_pitch": float(reference_pitch),
+            "mid_lane": mid_lane,
             "lanes": self.cfg["lane_range"],
             "notes": export_notes,
             "pitches": [{"time": float(t), "pitch": float(p), "midi": float(self.hz_to_midi(p))}
